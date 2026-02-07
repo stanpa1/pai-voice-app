@@ -1,0 +1,7 @@
+{
+  "name": "Nexus Voice Interface",
+  "description": "A customizable, voice-controlled system interface powered by Gemini Live API with tool capabilities and persistent history.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
