@@ -270,6 +270,25 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
         {renderResult('digest')}
       </div>
 
+      {/* Daily Brief */}
+      <div className={actionCardClass}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-2xl">☀️</span>
+          <div>
+            <h3 className="text-gray-100 font-medium">Daily Brief</h3>
+            <p className="text-gray-500 text-xs">Morning summary: calendar, projects, notes</p>
+          </div>
+        </div>
+        <button
+          className={btnClass}
+          disabled={results['daily-brief']?.loading}
+          onClick={() => runAction('daily-brief', '/actions/daily-brief')}
+        >
+          {results['daily-brief']?.loading ? 'Generating...' : 'Generate Brief'}
+        </button>
+        {renderResult('daily-brief')}
+      </div>
+
       {/* Research Brief */}
       <div className={actionCardClass}>
         <div className="flex items-center gap-2 mb-2">
