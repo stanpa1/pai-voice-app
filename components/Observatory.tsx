@@ -9,9 +9,18 @@ interface ObservatoryProps {
 
 type TabType = 'all' | 'inbox' | 'voice' | 'links' | 'research';
 
+interface AIStatus {
+  backend: string;
+  claude_sdk: { status: string; model: string | null; latency_ms: number | null; error: string | null };
+  deepseek: { status: string };
+  timestamp: string;
+}
+
 export function Observatory({ onBack, paiApiUrl, paiToken }: ObservatoryProps) {
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [status, setStatus] = useState<ObservatoryStatus | null>(null);
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null);
+  const [aiStatusLoading, setAiStatusLoading] = useState(false);
   const [events, setEvents] = useState<ObservatoryEvent[]>([]);
   const [voiceSessions, setVoiceSessions] = useState<ObservatoryEvent[]>([]);
   const [linkEnrichments, setLinkEnrichments] = useState<ObservatoryEvent[]>([]);
@@ -61,8 +70,21 @@ export function Observatory({ onBack, paiApiUrl, paiToken }: ObservatoryProps) {
     }
   };
 
+  const fetchAiStatus = async () => {
+    setAiStatusLoading(true);
+    try {
+      const res = await fetch(`${paiApiUrl}/observatory/ai-status`, { headers });
+      if (res.ok) setAiStatus(await res.json());
+    } catch (e) {
+      console.error('Failed to fetch AI status:', e);
+    } finally {
+      setAiStatusLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchAiStatus();
     const interval = setInterval(fetchData, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, []);
@@ -309,6 +331,54 @@ export function Observatory({ onBack, paiApiUrl, paiToken }: ObservatoryProps) {
             </div>
           </div>
         )}
+
+        {/* AI Backend Indicator */}
+        <div className="bg-gray-800 rounded-lg p-3 mb-4 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 font-medium">AI Backend</span>
+              {aiStatusLoading ? (
+                <span className="text-xs text-gray-500 animate-pulse">checking...</span>
+              ) : aiStatus ? (
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${
+                    aiStatus.backend === 'claude_sdk' ? 'bg-green-500' :
+                    aiStatus.backend === 'deepseek' ? 'bg-yellow-500' : 'bg-red-500'
+                  }`} />
+                  <span className={`text-sm font-semibold ${
+                    aiStatus.backend === 'claude_sdk' ? 'text-green-400' :
+                    aiStatus.backend === 'deepseek' ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {aiStatus.backend === 'claude_sdk' ? 'Claude SDK' :
+                     aiStatus.backend === 'deepseek' ? 'DeepSeek (fallback)' : 'Offline'}
+                  </span>
+                  {aiStatus.claude_sdk.latency_ms && (
+                    <span className="text-xs text-gray-500">{aiStatus.claude_sdk.latency_ms}ms</span>
+                  )}
+                  {aiStatus.backend === 'deepseek' && aiStatus.claude_sdk.error && (
+                    <span className="text-xs text-red-400 ml-1" title={aiStatus.claude_sdk.error}>
+                      Claude: {aiStatus.claude_sdk.error.slice(0, 60)}...
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-500">unavailable</span>
+              )}
+            </div>
+            <button
+              onClick={fetchAiStatus}
+              disabled={aiStatusLoading}
+              className="text-gray-500 hover:text-gray-300 text-xs disabled:opacity-50"
+            >
+              {aiStatusLoading ? '...' : '↻ Check'}
+            </button>
+          </div>
+          {aiStatus && aiStatus.backend === 'claude_sdk' && (
+            <div className="mt-1 text-xs text-gray-500">
+              OAuth (Max) &middot; DeepSeek fallback: {aiStatus.deepseek.status}
+            </div>
+          )}
+        </div>
 
         {/* Error */}
         {error && (

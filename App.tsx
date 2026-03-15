@@ -4,6 +4,7 @@ import { SetupPanel } from './components/SetupPanel';
 import { Visualizer } from './components/Visualizer';
 import { HistoryLog } from './components/HistoryLog';
 import { Observatory } from './components/Observatory';
+import { ActionsPanel } from './components/ActionsPanel';
 import { LiveClient } from './services/liveClient';
 
 // PAI API Configuration
@@ -227,6 +228,13 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setView(View.ACTIONS)}
+              className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-800/50"
+              title="Actions"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </button>
+            <button
               onClick={() => setView(View.OBSERVATORY)}
               className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-800/50"
               title="Observatory"
@@ -383,6 +391,16 @@ export default function App() {
           {view === View.OBSERVATORY && (
             <div className="absolute inset-0 z-50 bg-gray-900 overflow-auto">
                <Observatory
+                 onBack={() => setView(View.SETUP)}
+                 paiApiUrl={PAI_API_URL}
+                 paiToken={PAI_API_TOKEN}
+               />
+            </div>
+          )}
+
+          {view === View.ACTIONS && (
+            <div className="absolute inset-0 z-50 bg-gray-900 overflow-auto">
+               <ActionsPanel
                  onBack={() => setView(View.SETUP)}
                  paiApiUrl={PAI_API_URL}
                  paiToken={PAI_API_TOKEN}

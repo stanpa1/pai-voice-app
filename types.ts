@@ -3,6 +3,7 @@ export enum View {
   ACTIVE_CALL = 'ACTIVE_CALL',
   HISTORY = 'HISTORY',
   OBSERVATORY = 'OBSERVATORY',
+  ACTIONS = 'ACTIONS',
 }
 
 // Observatory types
