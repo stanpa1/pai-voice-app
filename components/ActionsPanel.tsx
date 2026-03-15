@@ -37,6 +37,8 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
   const [paiQuery, setPaiQuery] = useState('');
   const [transcriptUrl, setTranscriptUrl] = useState('');
   const [bookQuery, setBookQuery] = useState('');
+  const [researchPodcastTopic, setResearchPodcastTopic] = useState('');
+  const [researchPodcastFormat, setResearchPodcastFormat] = useState('deep-dive');
   const [resetConfirm, setResetConfirm] = useState(false);
 
   // Prompts state
@@ -314,16 +316,16 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
           <span className="text-2xl">🎙️</span>
           <div>
             <h3 className="text-gray-100 font-medium">Podcast</h3>
-            <p className="text-gray-500 text-xs">Generate an audio podcast from a URL</p>
+            <p className="text-gray-500 text-xs">Generate from URL(s) — separate multiple with commas</p>
           </div>
         </div>
         <div className="space-y-2">
-          <input
-            type="text"
-            className={inputClass}
-            placeholder="Enter URL..."
+          <textarea
+            className={inputClass + ' min-h-[60px] resize-y'}
+            placeholder="Enter URL(s) separated by commas or newlines..."
             value={podcastUrl}
             onChange={e => setPodcastUrl(e.target.value)}
+            rows={2}
           />
           <div className="flex gap-2">
             <select
@@ -331,10 +333,10 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
               value={podcastFormat}
               onChange={e => setPodcastFormat(e.target.value)}
             >
-              <option value="Deep Dive">Deep Dive</option>
-              <option value="Brief">Brief</option>
-              <option value="Critique">Critique</option>
-              <option value="Debate">Debate</option>
+              <option value="deep-dive">Deep Dive</option>
+              <option value="brief">Brief</option>
+              <option value="critique">Critique</option>
+              <option value="debate">Debate</option>
             </select>
             <button
               className={btnClass}
@@ -348,6 +350,48 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
           </div>
         </div>
         {renderResult('podcast')}
+      </div>
+
+      {/* Research Podcast */}
+      <div className={actionCardClass}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-2xl">🔬</span>
+          <div>
+            <h3 className="text-gray-100 font-medium">Research Podcast</h3>
+            <p className="text-gray-500 text-xs">Research a topic with AI, then generate a podcast</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <input
+            type="text"
+            className={inputClass}
+            placeholder="Enter topic to research..."
+            value={researchPodcastTopic}
+            onChange={e => setResearchPodcastTopic(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <select
+              className={selectClass}
+              value={researchPodcastFormat}
+              onChange={e => setResearchPodcastFormat(e.target.value)}
+            >
+              <option value="deep-dive">Deep Dive</option>
+              <option value="brief">Brief</option>
+              <option value="critique">Critique</option>
+              <option value="debate">Debate</option>
+            </select>
+            <button
+              className={btnClass}
+              disabled={!researchPodcastTopic.trim() || results['research-podcast']?.loading}
+              onClick={() => {
+                runAction('research-podcast', '/actions/research-podcast', { input: researchPodcastTopic, format: researchPodcastFormat });
+              }}
+            >
+              {results['research-podcast']?.loading ? 'Researching...' : 'Research & Generate'}
+            </button>
+          </div>
+        </div>
+        {renderResult('research-podcast')}
       </div>
 
       {/* PAI Query */}
@@ -414,6 +458,25 @@ export function ActionsPanel({ onBack, paiApiUrl, paiToken }: ActionsPanelProps)
           </button>
         </div>
         {renderResult('transcript')}
+      </div>
+
+      {/* Enrich X Links */}
+      <div className={actionCardClass}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-2xl">𝕏</span>
+          <div>
+            <h3 className="text-gray-100 font-medium">Enrich X Links</h3>
+            <p className="text-gray-500 text-xs">Fetch tweet content for Notion entries with empty Notes</p>
+          </div>
+        </div>
+        <button
+          className={btnClass}
+          disabled={results['enrich-x']?.loading}
+          onClick={() => runAction('enrich-x', '/actions/enrich-x-links')}
+        >
+          {results['enrich-x']?.loading ? 'Running...' : 'Enrich X Links'}
+        </button>
+        {renderResult('enrich-x')}
       </div>
 
       {/* Book Search */}
