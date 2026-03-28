@@ -210,6 +210,118 @@ const systemTools: FunctionDeclaration[] = [
       properties: {},
     },
   },
+  {
+    name: 'semanticSearch',
+    description: 'Deep semantic search over all Notion notes using AI embeddings. Better than searchNotes for finding conceptually related content. Use when user asks about a topic, concept, or wants to find related notes.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: 'Search query - topic or concept to find'
+        },
+        limit: {
+          type: Type.NUMBER,
+          description: 'Max results (default 5)'
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'searchMemory',
+    description: 'Search PAI shared memory - contains remembered facts, preferences, project context, and references saved across all AI tools (Claude Code, Hermes, Telegram). Use when user asks "do you remember...", "what do you know about me...", or references past conversations.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: 'What to search for in memory'
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'listMemories',
+    description: 'List recent PAI memories, optionally filtered by type (user, feedback, project, reference) or source (claude-code, hermes, telegram).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        type: {
+          type: Type.STRING,
+          description: 'Filter by memory type: user, feedback, project, reference'
+        },
+        source: {
+          type: Type.STRING,
+          description: 'Filter by source: claude-code, hermes, telegram'
+        },
+      },
+    },
+  },
+  {
+    name: 'getCalendarToday',
+    description: 'Get today\'s calendar events. Use when user asks "what do I have today?", "co mam dziś?", "jaki mam plan?".',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getCalendarUpcoming',
+    description: 'Get upcoming calendar events for the next few days. Use when user asks about upcoming schedule, this week, or what\'s coming up.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getCalendarTomorrow',
+    description: 'Get tomorrow\'s calendar events. Use when user asks "what do I have tomorrow?", "co mam jutro?".',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getInbox',
+    description: 'Get recent Telegram inbox messages (voice notes, photos, text captures). Use when user asks about recent messages, what they sent, or inbox contents.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        limit: {
+          type: Type.NUMBER,
+          description: 'Number of messages to fetch (default 10)'
+        },
+        type_filter: {
+          type: Type.STRING,
+          description: 'Filter by type: voice, photo, text'
+        },
+      },
+    },
+  },
+  {
+    name: 'getDailyBrief',
+    description: 'Get a daily briefing with calendar events, active projects, and recent notes. Use when user asks for a daily brief, morning summary, or "what\'s going on?".',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'getRelatedNotes',
+    description: 'Find notes related to a specific note using knowledge graph. Use when user wants to explore connections between topics or find related content.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        notion_id: {
+          type: Type.STRING,
+          description: 'Notion page ID to find related notes for'
+        },
+      },
+      required: ['notion_id'],
+    },
+  },
 ];
 
 // Helper function to call PAI API
@@ -463,6 +575,45 @@ export class LiveClient {
                         result = await callPAIApi('/books/reading', 'GET');
                     } else if (fc.name === 'getReadingList') {
                         result = await callPAIApi('/books/to-read', 'GET');
+                    } else if (fc.name === 'semanticSearch') {
+                        const args = fc.args as { query: string; limit?: number };
+                        result = await callPAIApi('/semantic-search', 'POST', {
+                            query: args.query,
+                            limit: args.limit || 5,
+                        });
+                    } else if (fc.name === 'searchMemory') {
+                        const args = fc.args as { query: string };
+                        result = await callPAIApi('/memory/search', 'POST', {
+                            query: args.query,
+                            limit: 5,
+                        });
+                    } else if (fc.name === 'listMemories') {
+                        const args = fc.args as { type?: string; source?: string };
+                        const params = new URLSearchParams();
+                        if (args.type) params.append('type', args.type);
+                        if (args.source) params.append('source', args.source);
+                        const queryStr = params.toString();
+                        result = await callPAIApi(`/memory/list?${queryStr}`, 'GET');
+                    } else if (fc.name === 'getCalendarToday') {
+                        result = await callPAIApi('/calendar/today', 'GET');
+                    } else if (fc.name === 'getCalendarUpcoming') {
+                        result = await callPAIApi('/calendar/upcoming', 'GET');
+                    } else if (fc.name === 'getCalendarTomorrow') {
+                        result = await callPAIApi('/calendar/tomorrow', 'GET');
+                    } else if (fc.name === 'getInbox') {
+                        const args = fc.args as { limit?: number; type_filter?: string };
+                        const params = new URLSearchParams();
+                        if (args.limit) params.append('limit', String(args.limit));
+                        if (args.type_filter) params.append('type_filter', args.type_filter);
+                        const queryStr = params.toString();
+                        result = await callPAIApi(`/inbox?${queryStr}`, 'GET');
+                    } else if (fc.name === 'getDailyBrief') {
+                        result = await callPAIApi('/actions/daily-brief', 'POST', {});
+                    } else if (fc.name === 'getRelatedNotes') {
+                        const args = fc.args as { notion_id: string };
+                        result = await callPAIApi('/knowledge-graph/related', 'POST', {
+                            notion_id: args.notion_id,
+                        });
                     }
                 } catch (error) {
                     console.error('Tool execution error:', error);

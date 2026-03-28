@@ -17,7 +17,9 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
+          // Force bundling from web entry (Vite 6 may externalize via importmap otherwise)
+          '@google/genai': path.resolve(__dirname, 'node_modules/@google/genai/dist/web/index.mjs'),
+        },
       }
     };
 });
