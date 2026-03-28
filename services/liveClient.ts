@@ -289,7 +289,7 @@ export class LiveClient {
 
       // 3. Connect to Gemini Live
       const sessionPromise = this.ai.live.connect({
-        model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+        model: 'gemini-3.1-flash-live-preview',
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -365,13 +365,17 @@ export class LiveClient {
 
   private async handleMessage(message: LiveServerMessage, sessionPromise: Promise<any>) {
     try {
-        // 1. Handle Audio Output
-        const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-        if (audioData && this.outputContext) {
-          const rawBytes = decodeBase64(audioData);
-          const audioBuffer = await pcm16ToAudioBuffer(rawBytes, this.outputContext);
-          
-          this.playAudioBuffer(audioBuffer);
+        // 1. Handle Audio Output (iterate all parts — 3.1 can send multiple per event)
+        const parts = message.serverContent?.modelTurn?.parts;
+        if (parts && this.outputContext) {
+          for (const part of parts) {
+            const audioData = part.inlineData?.data;
+            if (audioData) {
+              const rawBytes = decodeBase64(audioData);
+              const audioBuffer = await pcm16ToAudioBuffer(rawBytes, this.outputContext);
+              this.playAudioBuffer(audioBuffer);
+            }
+          }
         }
 
         // 2. Handle Interruption
