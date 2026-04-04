@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, SystemConfig, VoiceName, HistoryItem } from './types';
+import { View, SystemConfig, VoiceName, VoiceMode, ClaudeState, HistoryItem } from './types';
 import { SetupPanel } from './components/SetupPanel';
 import { Visualizer } from './components/Visualizer';
 import { HistoryLog } from './components/HistoryLog';
 import { Observatory } from './components/Observatory';
 import { ActionsPanel } from './components/ActionsPanel';
 import { LiveClient } from './services/liveClient';
+import { ClaudeClient } from './services/claudeClient';
 
 // PAI API Configuration
 const PAI_API_URL = import.meta.env.VITE_PAI_API_URL || 'https://api.stankowski.io/api';
@@ -51,7 +52,8 @@ export default function App() {
     systemInstruction: PAI_SYSTEM_INSTRUCTION,
     voiceName: VoiceName.Kore,
     useTools: true,
-    webhookUrl: "https://api.stankowski.io/api/voice-session"
+    webhookUrl: "https://api.stankowski.io/api/voice-session",
+    voiceMode: VoiceMode.GEMINI,
   });
   
   // Connection State
@@ -73,7 +75,10 @@ export default function App() {
   const [liveTranscripts, setLiveTranscripts] = useState<TranscriptItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   
+  const [claudeState, setClaudeState] = useState<ClaudeState>('idle');
+
   const liveClient = useRef<LiveClient | null>(null);
+  const claudeClientRef = useRef<ClaudeClient | null>(null);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -152,8 +157,13 @@ export default function App() {
   };
 
   const handleDisconnect = async () => {
+    if (claudeClientRef.current) {
+      await claudeClientRef.current.disconnect();
+      claudeClientRef.current = null;
+    }
     if (liveClient.current) {
       await liveClient.current.disconnect();
+      liveClient.current = null;
     }
   };
 
@@ -277,21 +287,18 @@ export default function App() {
                     <p className="text-blue-400 animate-pulse">Establishing Secure Uplink...</p>
                  </div>
                ) : (
-                 <SetupPanel 
-                   config={config} 
-                   onConfigChange={setConfig} 
+                 <SetupPanel
+                   config={config}
+                   onConfigChange={setConfig}
                    onStart={() => {
-                       // Custom wrapper to pass start time to save function
                        const startTime = Date.now();
-                       const apiKey = process.env.API_KEY;
-                       if (!apiKey) { setError("API Key missing"); return; }
-                       
+
                        setIsConnecting(true);
                        setError(null);
                        setLiveTranscripts([]);
                        transcriptsRef.current = [];
 
-                       liveClient.current = new LiveClient(apiKey, config, {
+                       const sharedCallbacks = {
                          onOpen: () => {
                            setIsConnected(true);
                            setIsConnecting(false);
@@ -301,27 +308,43 @@ export default function App() {
                            setIsConnected(false);
                            finalSave(startTime);
                            setView(View.SETUP);
+                           setClaudeState('idle');
                          },
-                         onError: (err) => {
+                         onError: (err: Error) => {
                            setError(err.message);
                            setIsConnecting(false);
                            setIsConnected(false);
                            setView(View.SETUP);
+                           setClaudeState('idle');
                          },
-                         onAudioData: (vol) => setVolume(vol),
-                         onTranscript: (role, text) => {
+                         onAudioData: (vol: number) => setVolume(vol),
+                         onTranscript: (role: 'user' | 'model', text: string) => {
                             setLiveTranscripts(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last && last.role === role) {
-                                    return [...prev.slice(0, -1), { ...last, text: last.text + text }];
+                                    // Gemini sends incremental chunks (append), Claude sends full text (replace)
+                                    const newText = config.voiceMode === VoiceMode.CLAUDE ? text : last.text + text;
+                                    return [...prev.slice(0, -1), { ...last, text: newText }];
                                 } else {
                                     return [...prev, { role, text }];
                                 }
                             });
                          }
-                       });
-                       liveClient.current.connect();
-                   }} 
+                       };
+
+                       if (config.voiceMode === VoiceMode.CLAUDE) {
+                         claudeClientRef.current = new ClaudeClient(config, {
+                           ...sharedCallbacks,
+                           onStateChange: (state: ClaudeState) => setClaudeState(state),
+                         });
+                         claudeClientRef.current.connect();
+                       } else {
+                         const apiKey = process.env.API_KEY;
+                         if (!apiKey) { setError("API Key missing"); setIsConnecting(false); return; }
+                         liveClient.current = new LiveClient(apiKey, config, sharedCallbacks);
+                         liveClient.current.connect();
+                       }
+                   }}
                  />
                )}
             </div>
@@ -332,11 +355,23 @@ export default function App() {
               
               {/* Visualizer Section */}
               <div className="flex-1 min-h-[300px] relative flex flex-col items-center justify-center">
-                 <Visualizer isActive={isConnected} volume={volume} isAgentTalking={volume > 0.05} />
-                 
+                 <Visualizer isActive={isConnected} volume={volume} isAgentTalking={volume > 0.05} mode={config.voiceMode} />
+
                  <div className="absolute top-4 bg-gray-900/50 backdrop-blur px-3 py-1 rounded-full border border-gray-700 text-xs font-mono text-gray-400">
                     SESSION: {formatTime(elapsedSeconds)}
                  </div>
+
+                 {config.voiceMode === VoiceMode.CLAUDE && claudeState !== 'idle' && (
+                   <div className={`absolute bottom-4 px-4 py-1.5 rounded-full text-xs font-medium backdrop-blur ${
+                     claudeState === 'listening' ? 'bg-green-900/50 text-green-400 border border-green-700/50' :
+                     claudeState === 'processing' ? 'bg-amber-900/50 text-amber-400 border border-amber-700/50 animate-pulse' :
+                     'bg-blue-900/50 text-blue-400 border border-blue-700/50'
+                   }`}>
+                     {claudeState === 'listening' ? 'Listening...' :
+                      claudeState === 'processing' ? 'Thinking...' :
+                      'Speaking...'}
+                   </div>
+                 )}
               </div>
               
               {/* Live Transcript Log */}

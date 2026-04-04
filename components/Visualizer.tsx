@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
+import { VoiceMode } from '../types';
 
 interface VisualizerProps {
   isActive: boolean;
   volume: number; // 0 to 1
   isAgentTalking?: boolean;
+  mode?: VoiceMode;
 }
 
-export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgentTalking }) => {
+export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgentTalking, mode }) => {
+  const isClaude = mode === VoiceMode.CLAUDE;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -43,7 +46,9 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
       // Draw active circle
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = isAgentTalking ? '#60A5FA' : '#34D399'; // Blue for agent, Green for user
+      ctx.strokeStyle = isClaude
+        ? (isAgentTalking ? '#F59E0B' : '#FB923C') // Amber/orange for Claude
+        : (isAgentTalking ? '#60A5FA' : '#34D399'); // Blue/green for Gemini
       ctx.lineWidth = 4 + (volume * 10);
       ctx.stroke();
 
@@ -55,7 +60,9 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
               ctx.beginPath();
               ctx.moveTo(radius + 10, 0);
               ctx.lineTo(radius + 30 + (volume * 50), 0);
-              ctx.strokeStyle = isAgentTalking ? 'rgba(96, 165, 250, 0.5)' : 'rgba(52, 211, 153, 0.5)';
+              ctx.strokeStyle = isClaude
+                ? (isAgentTalking ? 'rgba(245, 158, 11, 0.5)' : 'rgba(251, 146, 60, 0.5)')
+                : (isAgentTalking ? 'rgba(96, 165, 250, 0.5)' : 'rgba(52, 211, 153, 0.5)');
               ctx.lineWidth = 2;
               ctx.stroke();
           }
@@ -68,7 +75,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
     render();
 
     return () => cancelAnimationFrame(animationId);
-  }, [isActive, volume, isAgentTalking]);
+  }, [isActive, volume, isAgentTalking, isClaude]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-gray-900 rounded-3xl overflow-hidden shadow-inner shadow-gray-800">

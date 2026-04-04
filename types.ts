@@ -1,3 +1,8 @@
+export enum VoiceMode {
+  GEMINI = 'GEMINI',
+  CLAUDE = 'CLAUDE',
+}
+
 export enum View {
   SETUP = 'SETUP',
   ACTIVE_CALL = 'ACTIVE_CALL',
@@ -73,11 +78,14 @@ export enum VoiceName {
   Zephyr = 'Zephyr',
 }
 
+export type ClaudeState = 'idle' | 'listening' | 'processing' | 'speaking';
+
 export interface SystemConfig {
   systemInstruction: string;
   voiceName: VoiceName;
   useTools: boolean;
-  webhookUrl: string; // New field for integration
+  webhookUrl: string;
+  voiceMode: VoiceMode;
 }
 
 export interface HistoryItem {
