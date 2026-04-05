@@ -44,5 +44,32 @@
   <body class="bg-gray-900 text-gray-100 antialiased overflow-hidden">
     <div id="root" class="h-screen w-screen flex flex-col"></div>
   <script type="module" src="/index.tsx"></script>
+
+    <!-- PAI Hamburger Menu -->
+    <div id="pai-menu" style="position:fixed;bottom:16px;right:16px;z-index:9999;font-family:system-ui,-apple-system,sans-serif;">
+      <button id="pai-menu-btn" onclick="document.getElementById('pai-menu-panel').classList.toggle('hidden')"
+        style="width:48px;height:48px;border-radius:50%;background:#374151;border:1px solid #4b5563;color:#d1d5db;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:background 0.2s;"
+        onmouseover="this.style.background='#4b5563'" onmouseout="this.style.background='#374151'">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><rect y="3" width="20" height="2" rx="1"/><rect y="9" width="20" height="2" rx="1"/><rect y="15" width="20" height="2" rx="1"/></svg>
+      </button>
+      <div id="pai-menu-panel" class="hidden"
+        style="position:absolute;bottom:56px;right:0;background:#1f2937;border:1px solid #374151;border-radius:12px;padding:8px 0;min-width:200px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+        <div style="padding:6px 16px;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">PAI Tools</div>
+        <a href="https://wiki.stankowski.io" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#d1d5db;text-decoration:none;font-size:14px;transition:background 0.15s;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='transparent'">
+          <span style="font-size:16px;">📚</span> Wiki
+        </a>
+        <a href="https://api.stankowski.io/books-graph/" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#d1d5db;text-decoration:none;font-size:14px;transition:background 0.15s;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='transparent'">
+          <span style="font-size:16px;">📊</span> Books Graph
+        </a>
+        <a href="https://term.stankowski.io" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#d1d5db;text-decoration:none;font-size:14px;transition:background 0.15s;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='transparent'">
+          <span style="font-size:16px;">💻</span> Terminal
+        </a>
+        <div style="margin:4px 12px;border-top:1px solid #374151;"></div>
+        <a href="https://api.stankowski.io/media/FeKVGKGsX5EzgIMFvlkCQw/podcasts/feed.xml" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 16px;color:#d1d5db;text-decoration:none;font-size:14px;transition:background 0.15s;" onmouseover="this.style.background='#374151'" onmouseout="this.style.background='transparent'">
+          <span style="font-size:16px;">🎙️</span> Podcast Feed
+        </a>
+      </div>
+    </div>
+    <script>document.addEventListener('click',function(e){var m=document.getElementById('pai-menu');var p=document.getElementById('pai-menu-panel');if(!m.contains(e.target))p.classList.add('hidden');});</script>
 </body>
 </html>
