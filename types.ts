@@ -1,6 +1,7 @@
 export enum VoiceMode {
   GEMINI = 'GEMINI',
   CLAUDE = 'CLAUDE',
+  DUCKTALK = 'DUCKTALK',
 }
 
 export enum View {

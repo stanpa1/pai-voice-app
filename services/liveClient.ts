@@ -464,7 +464,7 @@ export class LiveClient {
       
       sessionPromise.then(session => {
         if (this.isConnected) {
-            session.sendRealtimeInput({ media: pcmData });
+            session.sendRealtimeInput({ audio: pcmData });
         }
       }).catch(err => {
           console.error("Error sending input:", err);

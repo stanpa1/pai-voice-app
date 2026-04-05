@@ -38,14 +38,26 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({ config, onConfigChange, 
         >
           Claude
         </button>
+        <button
+          onClick={() => handleChange('voiceMode', VoiceMode.DUCKTALK)}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+            config.voiceMode === VoiceMode.DUCKTALK
+              ? 'bg-purple-600 text-white shadow'
+              : 'text-gray-400 hover:text-gray-300'
+          }`}
+        >
+          DuckTalk
+        </button>
       </div>
 
       {/* Logo / Brand */}
       <div className="text-center">
         <div className={`inline-block p-4 rounded-full mb-4 ${
+          config.voiceMode === VoiceMode.DUCKTALK ? 'bg-purple-500/10' :
           config.voiceMode === VoiceMode.CLAUDE ? 'bg-amber-500/10' : 'bg-indigo-500/10'
         }`}>
           <svg className={`w-12 h-12 ${
+            config.voiceMode === VoiceMode.DUCKTALK ? 'text-purple-400' :
             config.voiceMode === VoiceMode.CLAUDE ? 'text-amber-400' : 'text-indigo-400'
           }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
@@ -53,7 +65,8 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({ config, onConfigChange, 
         </div>
         <h1 className="text-2xl font-semibold text-white">PAI Voice</h1>
         <p className="text-gray-500 text-sm mt-1">
-          {config.voiceMode === VoiceMode.CLAUDE ? 'Claude mode — tap to talk' : 'Tap to start conversation'}
+          {config.voiceMode === VoiceMode.DUCKTALK ? 'DuckTalk — Gemini voice + Claude Code brain' :
+           config.voiceMode === VoiceMode.CLAUDE ? 'Claude mode — tap to talk' : 'Tap to start conversation'}
         </p>
       </div>
 
@@ -61,7 +74,9 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({ config, onConfigChange, 
       <button
         onClick={onStart}
         className={`w-32 h-32 rounded-full shadow-lg transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center ${
-          config.voiceMode === VoiceMode.CLAUDE
+          config.voiceMode === VoiceMode.DUCKTALK
+            ? 'bg-gradient-to-br from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 shadow-purple-500/30'
+            : config.voiceMode === VoiceMode.CLAUDE
             ? 'bg-gradient-to-br from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-500/30'
             : 'bg-gradient-to-br from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-indigo-500/30'
         }`}
@@ -86,8 +101,8 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({ config, onConfigChange, 
       {/* Collapsible Settings */}
       {showSettings && (
         <div className="w-full bg-gray-800/50 rounded-xl p-4 space-y-4 border border-gray-700/50">
-          {/* Voice Selection — Gemini only */}
-          {config.voiceMode === VoiceMode.GEMINI && (
+          {/* Voice Selection — Gemini and DuckTalk */}
+          {(config.voiceMode === VoiceMode.GEMINI || config.voiceMode === VoiceMode.DUCKTALK) && (
             <div>
               <label className="block text-xs font-medium text-gray-400 mb-2">Voice</label>
               <div className="grid grid-cols-5 gap-1">
@@ -112,6 +127,13 @@ export const SetupPanel: React.FC<SetupPanelProps> = ({ config, onConfigChange, 
           {config.voiceMode === VoiceMode.CLAUDE && (
             <div className="text-xs text-gray-500 bg-gray-900/30 rounded p-2">
               Uses browser speech recognition and text-to-speech. Works best in Chrome.
+            </div>
+          )}
+
+          {/* DuckTalk mode info */}
+          {config.voiceMode === VoiceMode.DUCKTALK && (
+            <div className="text-xs text-gray-500 bg-gray-900/30 rounded p-2">
+              Gemini Live voice I/O + Claude Code with PAI tools. Low latency streaming.
             </div>
           )}
 

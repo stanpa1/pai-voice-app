@@ -7,6 +7,7 @@ import { Observatory } from './components/Observatory';
 import { ActionsPanel } from './components/ActionsPanel';
 import { LiveClient } from './services/liveClient';
 import { ClaudeClient } from './services/claudeClient';
+import { DuckTalkClient } from './services/duckTalkClient';
 
 // PAI API Configuration
 const PAI_API_URL = import.meta.env.VITE_PAI_API_URL || 'https://api.stankowski.io/api';
@@ -79,6 +80,7 @@ export default function App() {
 
   const liveClient = useRef<LiveClient | null>(null);
   const claudeClientRef = useRef<ClaudeClient | null>(null);
+  const duckTalkClientRef = useRef<DuckTalkClient | null>(null);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -157,6 +159,10 @@ export default function App() {
   };
 
   const handleDisconnect = async () => {
+    if (duckTalkClientRef.current) {
+      await duckTalkClientRef.current.disconnect();
+      duckTalkClientRef.current = null;
+    }
     if (claudeClientRef.current) {
       await claudeClientRef.current.disconnect();
       claudeClientRef.current = null;
@@ -322,8 +328,8 @@ export default function App() {
                             setLiveTranscripts(prev => {
                                 const last = prev[prev.length - 1];
                                 if (last && last.role === role) {
-                                    // Gemini sends incremental chunks (append), Claude sends full text (replace)
-                                    const newText = config.voiceMode === VoiceMode.CLAUDE ? text : last.text + text;
+                                    // Gemini sends incremental chunks (append), Claude/DuckTalk send full text (replace)
+                                    const newText = (config.voiceMode === VoiceMode.CLAUDE || config.voiceMode === VoiceMode.DUCKTALK) ? text : last.text + text;
                                     return [...prev.slice(0, -1), { ...last, text: newText }];
                                 } else {
                                     return [...prev, { role, text }];
@@ -332,7 +338,12 @@ export default function App() {
                          }
                        };
 
-                       if (config.voiceMode === VoiceMode.CLAUDE) {
+                       if (config.voiceMode === VoiceMode.DUCKTALK) {
+                         const apiKey = process.env.API_KEY;
+                         if (!apiKey) { setError("Gemini API Key missing"); setIsConnecting(false); return; }
+                         duckTalkClientRef.current = new DuckTalkClient(apiKey, config, sharedCallbacks);
+                         duckTalkClientRef.current.connect();
+                       } else if (config.voiceMode === VoiceMode.CLAUDE) {
                          claudeClientRef.current = new ClaudeClient(config, {
                            ...sharedCallbacks,
                            onStateChange: (state: ClaudeState) => setClaudeState(state),

@@ -10,6 +10,7 @@ interface VisualizerProps {
 
 export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgentTalking, mode }) => {
   const isClaude = mode === VoiceMode.CLAUDE;
+  const isDuckTalk = mode === VoiceMode.DUCKTALK;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -46,7 +47,9 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
       // Draw active circle
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
-      ctx.strokeStyle = isClaude
+      ctx.strokeStyle = isDuckTalk
+        ? (isAgentTalking ? '#A855F7' : '#C084FC') // Purple for DuckTalk
+        : isClaude
         ? (isAgentTalking ? '#F59E0B' : '#FB923C') // Amber/orange for Claude
         : (isAgentTalking ? '#60A5FA' : '#34D399'); // Blue/green for Gemini
       ctx.lineWidth = 4 + (volume * 10);
@@ -60,7 +63,9 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
               ctx.beginPath();
               ctx.moveTo(radius + 10, 0);
               ctx.lineTo(radius + 30 + (volume * 50), 0);
-              ctx.strokeStyle = isClaude
+              ctx.strokeStyle = isDuckTalk
+                ? (isAgentTalking ? 'rgba(168, 85, 247, 0.5)' : 'rgba(192, 132, 252, 0.5)')
+                : isClaude
                 ? (isAgentTalking ? 'rgba(245, 158, 11, 0.5)' : 'rgba(251, 146, 60, 0.5)')
                 : (isAgentTalking ? 'rgba(96, 165, 250, 0.5)' : 'rgba(52, 211, 153, 0.5)');
               ctx.lineWidth = 2;
@@ -75,7 +80,7 @@ export const Visualizer: React.FC<VisualizerProps> = ({ isActive, volume, isAgen
     render();
 
     return () => cancelAnimationFrame(animationId);
-  }, [isActive, volume, isAgentTalking, isClaude]);
+  }, [isActive, volume, isAgentTalking, isClaude, isDuckTalk]);
 
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-gray-900 rounded-3xl overflow-hidden shadow-inner shadow-gray-800">
