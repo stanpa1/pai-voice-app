@@ -77,6 +77,9 @@ export enum VoiceName {
   Kore = 'Kore',
   Fenrir = 'Fenrir',
   Zephyr = 'Zephyr',
+  Aoede = 'Aoede',
+  Leda = 'Leda',
+  Orus = 'Orus',
 }
 
 export type ClaudeState = 'idle' | 'listening' | 'processing' | 'speaking';
