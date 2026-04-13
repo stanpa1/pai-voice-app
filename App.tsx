@@ -192,6 +192,35 @@ export default function App() {
       transcriptsRef.current = liveTranscripts;
   }, [liveTranscripts]);
 
+  // Track session start time in a ref so beforeunload can access it
+  const sessionStartRef = useRef<number | null>(null);
+
+  // Safety net: save transcript if user closes tab/browser during active session
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const startTime = sessionStartRef.current;
+      const transcripts = transcriptsRef.current;
+      if (!startTime || transcripts.length === 0) return;
+
+      const payload = JSON.stringify({
+        id: crypto.randomUUID(),
+        timestamp: startTime,
+        duration: Math.floor((Date.now() - startTime) / 1000),
+        transcripts: transcripts,
+      });
+
+      const paiToken = import.meta.env.VITE_PAI_API_TOKEN || '';
+      // sendBeacon works reliably during page unload (unlike fetch)
+      navigator.sendBeacon(
+        `${config.webhookUrl}?token=${paiToken}`,
+        new Blob([payload], { type: 'application/json' })
+      );
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [config.webhookUrl]);
+
   const finalSave = (startTime: number) => {
       const finalTranscripts = transcriptsRef.current;
       if (finalTranscripts.length > 0) {
@@ -219,6 +248,7 @@ export default function App() {
       }
       setVolume(0);
       setElapsedSeconds(0);
+      sessionStartRef.current = null; // Prevent duplicate save from beforeunload
   };
   
   // Update the onClose callback to call finalSave
@@ -298,6 +328,7 @@ export default function App() {
                    onConfigChange={setConfig}
                    onStart={() => {
                        const startTime = Date.now();
+                       sessionStartRef.current = startTime;
 
                        setIsConnecting(true);
                        setError(null);
