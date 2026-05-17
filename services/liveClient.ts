@@ -284,6 +284,32 @@ const systemTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: 'addCalendarEvent',
+    description: 'Add an event to Google Calendar. Use when user wants to schedule, book, or save an event/meeting/appointment/concert/trip. Confirms by speaking the event back, including date. Accepts ISO datetime or natural language ("jutro o 14:00", "19 maja o 19:00", "tomorrow at 2pm"). For multi-day events (trips, holidays), use duration_hours = 24 * number_of_days.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        summary: {
+          type: Type.STRING,
+          description: 'Event title (e.g. "Metallica - koncert", "Spotkanie z Janem")'
+        },
+        start: {
+          type: Type.STRING,
+          description: 'Start datetime - ISO format (2026-05-19T19:00:00) or natural language ("19 maja o 19:00", "jutro o 14:00", "tomorrow at 2pm")'
+        },
+        duration_hours: {
+          type: Type.NUMBER,
+          description: 'Event duration in hours. Default 1. For all-day events use 24. For multi-day trips use 24 * days.'
+        },
+        description: {
+          type: Type.STRING,
+          description: 'Optional event description / notes'
+        },
+      },
+      required: ['summary', 'start'],
+    },
+  },
+  {
     name: 'getInbox',
     description: 'Get recent Telegram inbox messages (voice notes, photos, text captures). Use when user asks about recent messages, what they sent, or inbox contents.',
     parameters: {
@@ -600,6 +626,14 @@ export class LiveClient {
                         result = await callPAIApi('/calendar/upcoming', 'GET');
                     } else if (fc.name === 'getCalendarTomorrow') {
                         result = await callPAIApi('/calendar/tomorrow', 'GET');
+                    } else if (fc.name === 'addCalendarEvent') {
+                        const args = fc.args as { summary: string; start: string; duration_hours?: number; description?: string };
+                        result = await callPAIApi('/calendar/event', 'POST', {
+                            summary: args.summary,
+                            start: args.start,
+                            duration: args.duration_hours ?? 1,
+                            description: args.description,
+                        });
                     } else if (fc.name === 'getInbox') {
                         const args = fc.args as { limit?: number; type_filter?: string };
                         const params = new URLSearchParams();
