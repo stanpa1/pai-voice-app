@@ -5,6 +5,7 @@ import { Visualizer } from './components/Visualizer';
 import { HistoryLog } from './components/HistoryLog';
 import { Observatory } from './components/Observatory';
 import { ActionsPanel } from './components/ActionsPanel';
+import { ChatPanel } from './components/ChatPanel';
 import { LiveClient } from './services/liveClient';
 import { ClaudeClient } from './services/claudeClient';
 import { DuckTalkClient } from './services/duckTalkClient';
@@ -281,6 +282,13 @@ export default function App() {
           </div>
           <div className="flex items-center gap-1">
             <button
+              onClick={() => setView(View.CHAT)}
+              className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-800/50"
+              title="Hermes / PAI Chat"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.8L3 20l1.35-3.6A7.3 7.3 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            </button>
+            <button
               onClick={() => setView(View.ACTIONS)}
               className="p-2 text-gray-500 hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-800/50"
               title="Actions"
@@ -485,6 +493,16 @@ export default function App() {
           {view === View.ACTIONS && (
             <div className="absolute inset-0 z-50 bg-gray-900 overflow-auto">
                <ActionsPanel
+                 onBack={() => setView(View.SETUP)}
+                 paiApiUrl={PAI_API_URL}
+                 paiToken={PAI_API_TOKEN}
+               />
+            </div>
+          )}
+
+          {view === View.CHAT && (
+            <div className="absolute inset-0 z-50 bg-gray-900 overflow-hidden">
+               <ChatPanel
                  onBack={() => setView(View.SETUP)}
                  paiApiUrl={PAI_API_URL}
                  paiToken={PAI_API_TOKEN}

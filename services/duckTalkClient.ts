@@ -114,17 +114,18 @@ function createPlayer(): Player {
 
 // --- SSE Client ---
 
-interface ConverseCallbacks {
+export interface ConverseCallbacks {
   onChunk: (text: string) => void;
   onDone?: (sessionId: string, costUsd: number, durationMs: number) => void;
   onError: (msg: string) => void;
 }
 
-async function streamConverse(
+export async function streamConverse(
   instruction: string,
   sessionId: string | null,
   callbacks: ConverseCallbacks,
   signal?: AbortSignal,
+  persona?: 'pai' | 'hermes',
 ): Promise<void> {
   try {
     const res = await fetch(`${DUCKTALK_API_URL}/converse`, {
@@ -136,6 +137,7 @@ async function streamConverse(
       body: JSON.stringify({
         instruction,
         session_id: sessionId,
+        persona,
       }),
       signal,
     });
