@@ -10,6 +10,7 @@ interface ChatPanelProps {
 type Role = 'user' | 'assistant' | 'system';
 type BackendMode = 'ducktalk' | 'pai';
 type VoiceState = 'idle' | 'listening' | 'speaking';
+type VoiceLanguage = 'pl-PL' | 'en-US';
 
 interface ChatMessage {
   id: string;
@@ -34,6 +35,11 @@ const newId = () => {
 };
 
 const initialSessionId = () => localStorage.getItem(CHAT_SESSION_KEY);
+
+const supportsSpeechRecognition = () => (
+  typeof window !== 'undefined'
+  && Boolean((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+);
 
 const detectTextLanguage = (text: string): string => {
   const polishPattern = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]|(\b(jest|nie|tak|jak|się|czy|ale|mam|masz|będzie|dzisiaj|jutro|projekt|dobry|cześć|hej)\b)/i;
@@ -63,6 +69,7 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>('pl-PL');
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -277,7 +284,7 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
       recognitionRef.current = recognition;
       recognition.continuous = false;
       recognition.interimResults = true;
-      recognition.lang = 'pl-PL';
+      recognition.lang = voiceLanguage;
       let finalTranscript = '';
 
       recognition.onstart = () => setVoiceState('listening');
@@ -314,16 +321,26 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
     stopSpeaking();
   };
 
+  const voiceStatus = voiceState === 'listening'
+    ? 'Słucham — mów teraz'
+    : voiceState === 'speaking'
+      ? 'Czytam odpowiedź'
+      : isSending
+        ? 'Hermes odpowiada'
+        : 'Gotowy do rozmowy';
+
+  const speechRecognitionAvailable = supportsSpeechRecognition();
+
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white">
-      <header className="px-4 py-3 flex items-center justify-between border-b border-gray-800 bg-gray-900/95 backdrop-blur">
+      <header className="px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-800 bg-gray-900/95 backdrop-blur">
         <div className="flex items-center gap-3">
           <button onClick={onBack} className="p-2 text-gray-500 hover:text-gray-200 rounded-lg hover:bg-gray-800" title="Back">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div>
             <h2 className="font-semibold text-gray-100">Hermes / PAI Chat</h2>
-            <p className="text-xs text-gray-500">Session {sessionId ? sessionId.slice(0, 8) : 'new'} · {backend === 'ducktalk' ? 'DuckTalk SSE' : 'PAI voice-chat'} · {voiceState}</p>
+            <p className="text-xs text-gray-500">Session {sessionId ? sessionId.slice(0, 8) : 'new'} · {backend === 'ducktalk' ? 'DuckTalk SSE' : 'PAI voice-chat'} · {voiceStatus}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -370,7 +387,58 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
         </div>
       )}
 
-      <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
+      <div className="px-4 pb-3 space-y-3">
+        <div className={`rounded-2xl border p-3 flex flex-col sm:flex-row sm:items-center gap-3 ${
+          voiceState === 'listening'
+            ? 'bg-red-950/40 border-red-700/70'
+            : voiceState === 'speaking'
+              ? 'bg-indigo-950/40 border-indigo-700/70'
+              : 'bg-gray-950/70 border-gray-800'
+        }`}>
+          <button
+            type="button"
+            onClick={startVoiceInput}
+            disabled={isSending || voiceState === 'speaking' || !speechRecognitionAvailable}
+            className={`h-14 px-6 rounded-2xl text-base font-semibold border disabled:opacity-50 disabled:cursor-not-allowed ${
+              voiceState === 'listening'
+                ? 'bg-red-700 hover:bg-red-600 border-red-500 text-white animate-pulse'
+                : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-400/60 text-white'
+            }`}
+            title="Push to talk"
+          >
+            {voiceState === 'listening' ? '■ Stop mic' : '🎙️ Mów'}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-gray-100">{voiceStatus}</div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              {speechRecognitionAvailable
+                ? 'Kliknij Mów, powiedz komendę, a po zakończeniu rozpoznawania wyślę ją do Hermesa.'
+                : 'Rozpoznawanie mowy wymaga Chrome/Edge z Web Speech API.'}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+            <label className="flex items-center gap-2 select-none">
+              <input type="checkbox" checked={autoSpeak} onChange={e => setAutoSpeak(e.target.checked)} className="accent-indigo-500" />
+              czytaj odpowiedzi
+            </label>
+            <label className="flex items-center gap-2">
+              język
+              <select
+                value={voiceLanguage}
+                onChange={e => setVoiceLanguage(e.target.value as VoiceLanguage)}
+                disabled={voiceState === 'listening'}
+                className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="pl-PL">PL</option>
+                <option value="en-US">EN</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
         {quickPrompts.map(prompt => (
           <button
             key={prompt.label}
@@ -381,14 +449,11 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
             {prompt.label}
           </button>
         ))}
-        <label className="ml-auto flex items-center gap-2 text-xs text-gray-400 select-none">
-          <input type="checkbox" checked={autoSpeak} onChange={e => setAutoSpeak(e.target.checked)} className="accent-indigo-500" />
-          czytaj odpowiedzi
-        </label>
+        </div>
       </div>
 
       <form
-        className="p-4 border-t border-gray-800 bg-gray-950/70 flex items-end gap-2"
+        className="p-4 border-t border-gray-800 bg-gray-950/70 flex flex-col sm:flex-row sm:items-end gap-2"
         onSubmit={e => {
           e.preventDefault();
           void sendMessage(input, autoSpeak);
@@ -404,29 +469,16 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
             }
           }}
           rows={2}
-          placeholder={voiceState === 'listening' ? 'Słucham...' : 'Napisz albo kliknij mikrofon...'}
+          placeholder={voiceState === 'listening' ? 'Słucham...' : 'Napisz albo kliknij Mów...'}
           className="flex-1 resize-none bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500"
           disabled={isSending}
         />
-        <button
-          type="button"
-          onClick={startVoiceInput}
-          disabled={isSending || voiceState === 'speaking'}
-          className={`px-4 py-3 rounded-xl text-sm font-medium border disabled:opacity-50 ${
-            voiceState === 'listening'
-              ? 'bg-red-700 hover:bg-red-600 border-red-500 text-white animate-pulse'
-              : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-100'
-          }`}
-          title="Push to talk"
-        >
-          {voiceState === 'listening' ? 'Stop mic' : '🎙️'}
-        </button>
         {(isSending || voiceState === 'speaking') ? (
-          <button type="button" onClick={stop} className="px-5 py-3 rounded-xl bg-red-700 hover:bg-red-600 text-sm font-medium">
+          <button type="button" onClick={stop} className="w-full sm:w-auto px-5 py-3 rounded-xl bg-red-700 hover:bg-red-600 text-sm font-medium">
             Stop
           </button>
         ) : (
-          <button type="submit" disabled={!input.trim()} className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="submit" disabled={!input.trim()} className="w-full sm:w-auto px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
             Send
           </button>
         )}
