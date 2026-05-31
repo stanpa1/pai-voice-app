@@ -12,6 +12,19 @@ type BackendMode = 'ducktalk' | 'pai';
 type VoiceState = 'idle' | 'listening' | 'speaking';
 type VoiceLanguage = 'pl-PL' | 'en-US';
 
+const ttsVoiceOptions = [
+  { value: '', label: 'Auto' },
+  { value: 'pl-PL-Chirp3-HD-Aoede', label: 'Aoede PL · żeński · HD' },
+  { value: 'pl-PL-Chirp3-HD-Puck', label: 'Puck PL · męski · HD' },
+  { value: 'pl-PL-Chirp3-HD-Kore', label: 'Kore PL · żeński · HD' },
+  { value: 'pl-PL-Chirp3-HD-Charon', label: 'Charon PL · męski · HD' },
+  { value: 'pl-PL-Wavenet-G', label: 'Wavenet G PL · męski · szybki' },
+  { value: 'pl-PL-Standard-G', label: 'Standard G PL · męski · najszybszy' },
+  { value: 'en-US-Chirp3-HD-Aoede', label: 'Aoede EN · female · HD' },
+  { value: 'en-US-Chirp3-HD-Puck', label: 'Puck EN · male · HD' },
+  { value: 'en-US-Wavenet-D', label: 'Wavenet D EN · male · fast' },
+];
+
 interface ChatMessage {
   id: string;
   role: Role;
@@ -21,6 +34,8 @@ interface ChatMessage {
 
 const CHAT_SESSION_KEY = 'pai-chat-hermes-session-id-v3';
 const CHAT_HISTORY_KEY = 'pai-chat-history';
+const TTS_VOICE_KEY = 'pai-chat-tts-voice';
+const TTS_SPEED_KEY = 'pai-chat-tts-speed';
 
 const quickPrompts = [
   { label: 'Daily brief', text: 'Daj mi krótki daily brief.' },
@@ -70,6 +85,11 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>('pl-PL');
+  const [ttsVoice, setTtsVoice] = useState(() => localStorage.getItem(TTS_VOICE_KEY) || '');
+  const [ttsSpeed, setTtsSpeed] = useState(() => {
+    const savedSpeed = Number(localStorage.getItem(TTS_SPEED_KEY));
+    return Number.isFinite(savedSpeed) && savedSpeed >= 0.75 && savedSpeed <= 1.5 ? savedSpeed : 1.08;
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -87,6 +107,14 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messages.slice(-80)));
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem(TTS_VOICE_KEY, ttsVoice);
+  }, [ttsVoice]);
+
+  useEffect(() => {
+    localStorage.setItem(TTS_SPEED_KEY, String(ttsSpeed));
+  }, [ttsSpeed]);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -121,13 +149,21 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
     setVoiceState('speaking');
 
     try {
+      const language = ttsVoice ? ttsVoice.slice(0, 5) : detectTextLanguage(clean);
+      const payload: Record<string, string | number> = {
+        text: clean,
+        language,
+        speed: ttsSpeed,
+      };
+      if (ttsVoice) payload.voice = ttsVoice;
+
       const res = await fetch(`${paiApiUrl}/tts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${paiToken}`,
         },
-        body: JSON.stringify({ text: clean }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`TTS API error: ${res.status}`);
       const data = await res.json();
@@ -139,6 +175,7 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
     } catch {
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = detectTextLanguage(clean);
+      utterance.rate = ttsSpeed;
       utterance.onend = () => setVoiceState('idle');
       utterance.onerror = () => setVoiceState('idle');
       window.speechSynthesis.speak(utterance);
@@ -424,7 +461,7 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
               czytaj odpowiedzi
             </label>
             <label className="flex items-center gap-2">
-              język
+              STT
               <select
                 value={voiceLanguage}
                 onChange={e => setVoiceLanguage(e.target.value as VoiceLanguage)}
@@ -435,6 +472,48 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
                 <option value="en-US">EN</option>
               </select>
             </label>
+            <label className="flex items-center gap-2">
+              głos
+              <select
+                value={ttsVoice}
+                onChange={e => setTtsVoice(e.target.value)}
+                disabled={voiceState === 'speaking'}
+                className="max-w-[15rem] bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-200 focus:outline-none focus:border-indigo-500"
+              >
+                {ttsVoiceOptions.map(option => (
+                  <option key={option.value || 'auto'} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              tempo {ttsSpeed.toFixed(2)}×
+              <input
+                type="range"
+                min="0.85"
+                max="1.30"
+                step="0.01"
+                value={ttsSpeed}
+                onChange={e => setTtsSpeed(Number(e.target.value))}
+                disabled={voiceState === 'speaking'}
+                className="w-24 accent-indigo-500"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => { setTtsVoice('pl-PL-Chirp3-HD-Aoede'); setTtsSpeed(1.08); }}
+              disabled={voiceState === 'speaking'}
+              className="px-2 py-1 rounded bg-gray-900 border border-gray-700 hover:border-indigo-500 text-gray-300 disabled:opacity-50"
+            >
+              jakość
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTtsVoice('pl-PL-Wavenet-G'); setTtsSpeed(1.15); }}
+              disabled={voiceState === 'speaking'}
+              className="px-2 py-1 rounded bg-gray-900 border border-gray-700 hover:border-indigo-500 text-gray-300 disabled:opacity-50"
+            >
+              szybki głos
+            </button>
           </div>
         </div>
 
