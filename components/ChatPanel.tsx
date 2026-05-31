@@ -241,33 +241,59 @@ export function ChatPanel({ onBack, paiApiUrl, paiToken }: ChatPanelProps) {
     abortRef.current = controller;
     let finalResponse: string | null = null;
 
+    const sendViaDuckTalk = async (sessionToUse: string | null, metaPrefix = 'DuckTalk') => {
+      let accumulated = '';
+      let duckTalkError: string | null = null;
+
+      await streamConverse(
+        text,
+        sessionToUse,
+        {
+          onChunk: chunk => {
+            accumulated += chunk;
+            finalResponse = accumulated;
+            updateMessage(assistantId, { text: accumulated, meta: `${metaPrefix} streaming...` });
+          },
+          onDone: (returnedSessionId, costUsd, durationMs) => {
+            if (returnedSessionId) setSessionId(returnedSessionId);
+            finalResponse = accumulated || '(brak treści)';
+            updateMessage(assistantId, {
+              text: finalResponse,
+              meta: `DuckTalk · $${(costUsd || 0).toFixed(4)} · ${Math.round((durationMs || 0) / 1000)}s`,
+            });
+          },
+          onError: msg => {
+            duckTalkError = msg;
+          },
+        },
+        controller.signal,
+        'hermes',
+      );
+
+      if (duckTalkError) throw new Error(duckTalkError);
+      if (!finalResponse) throw new Error('DuckTalk returned no response');
+    };
+
+    const isExpiredDuckTalkSession = (e: any) => {
+      const msg = String(e?.message || e || '');
+      return /No conversation found|--resume requires a valid session ID|Session IDs must be/i.test(msg);
+    };
+
     try {
       if (backend === 'ducktalk') {
-        let accumulated = '';
-        await streamConverse(
-          text,
-          sessionId,
-          {
-            onChunk: chunk => {
-              accumulated += chunk;
-              finalResponse = accumulated;
-              updateMessage(assistantId, { text: accumulated, meta: 'DuckTalk streaming...' });
-            },
-            onDone: (returnedSessionId, costUsd, durationMs) => {
-              if (returnedSessionId) setSessionId(returnedSessionId);
-              finalResponse = accumulated || '(brak treści)';
-              updateMessage(assistantId, {
-                text: finalResponse,
-                meta: `DuckTalk · $${(costUsd || 0).toFixed(4)} · ${Math.round((durationMs || 0) / 1000)}s`,
-              });
-            },
-            onError: msg => {
-              throw new Error(msg);
-            },
-          },
-          controller.signal,
-          'hermes',
-        );
+        try {
+          await sendViaDuckTalk(sessionId);
+        } catch (duckTalkError: any) {
+          if (sessionId && isExpiredDuckTalkSession(duckTalkError)) {
+            setSessionId(null);
+            localStorage.removeItem(CHAT_SESSION_KEY);
+            updateMessage(assistantId, { text: '', meta: 'DuckTalk session expired — retrying new session...' });
+            finalResponse = null;
+            await sendViaDuckTalk(null, 'DuckTalk new session');
+          } else {
+            throw duckTalkError;
+          }
+        }
       } else {
         finalResponse = await sendViaPaiFallback(text, assistantId);
       }
