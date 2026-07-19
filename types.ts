@@ -11,6 +11,7 @@ export enum View {
   OBSERVATORY = 'OBSERVATORY',
   ACTIONS = 'ACTIONS',
   CHAT = 'CHAT',
+  TIMELINE = 'TIMELINE',
 }
 
 // Observatory types
